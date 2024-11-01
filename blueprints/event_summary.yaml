@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary (LLM Vision smkrv)
+  name: AI Event Summary (LLM Vision v1.2.1)
   author: valentinfrlch
   description: >
     AI-powered security event summaries for frigate or camera entities. 
@@ -51,7 +51,7 @@ blueprint:
           multiline: true
     frigate_url:
       name: Frigate URL
-      description: (Frigate) Frigate's base URL to fetch snapshot.
+      description: (Frigate) Frigate's base URL to fetch a snapshot.
       default: "http://localhost:5000"
       selector:
         text:
