@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary (LLM Vision v1.2.1)
+  name: AI Event Summary (LLM Vision smkrv)
   author: valentinfrlch
   description: >
     AI-powered security event summaries for frigate or camera entities. 
@@ -20,6 +20,15 @@ blueprint:
       default: false
       selector:
         boolean:
+    provider:
+      name: Provider
+      description: "Select the AI provider to use."
+      default: "openai"
+      selector:
+        select:
+          options:
+            - 'openai'
+            - 'huggingface'
     notify_device:
       name: Notify Device
       description: The device to send the notification to
@@ -246,6 +255,7 @@ variables:
   frigate_url: !input frigate_url
   mqtt_topic: !input mqtt_topic
   notification_message: !input notification_message
+  provider: !input provider
   cooldown: !input cooldown
   mode: !input mode
   camera_entities_list: !input camera_entities
