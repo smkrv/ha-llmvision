@@ -1,10 +1,11 @@
 blueprint:
-  name: AI Event Summary (LLM Vision beta smkrv)
+  name: AI Event Summary (LLM Vision test)
   author: valentinfrlch
   description: >
     AI-powered security event summaries for frigate or camera entities. 
     Sends a notification with a preview to your phone that is updated dynamically when the AI summary is available.
   domain: automation
+  
   input:
     mode:
       name: Mode
@@ -20,6 +21,15 @@ blueprint:
       default: false
       selector:
         boolean:
+    provider:
+      name: Provider
+      description: Configuration to use for the video_analyzer service. See docs for additional information.
+      default: "openai"
+      selector:
+        select:
+          options:
+            - openai
+            - huggingface
     notify_device:
       name: Notify Device
       description: The device to send the notification to
@@ -42,7 +52,7 @@ blueprint:
           multiline: true
     frigate_url:
       name: Frigate URL
-      description: (Frigate) Frigate's base URL to fetch snapshot.
+      description: (Frigate) Frigate's base URL to fetch a snapshot.
       default: "http://localhost:5000"
       selector:
         text:
@@ -246,6 +256,7 @@ variables:
   frigate_url: !input frigate_url
   mqtt_topic: !input mqtt_topic
   notification_message: !input notification_message
+  provider: !input provider
   cooldown: !input cooldown
   mode: !input mode
   camera_entities_list: !input camera_entities
