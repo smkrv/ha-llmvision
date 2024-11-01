@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary (LLM Vision v1.2.1 / SMKRV)
+  name: AI Event Summary (LLM Vision SMKRV)
   author: valentinfrlch
   description: >
     AI-powered security event summaries for frigate or camera entities. 
@@ -50,7 +50,7 @@ blueprint:
     base_url:
       name: Base URL
       description: "The base URL for notifications (local or external)."
-      default: "http://localhost:5000" # Set a default value if needed
+      default: "http://localhost:5000" 
       selector:
         text:
           multiline: false
@@ -135,6 +135,110 @@ blueprint:
         number:
           min: 0
           max: 60
+    motion_sensors:
+      name: Motion Sensors
+      description: "(Camera) List of motion sensor entities to monitor."
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: binary_sensor
+    camera_entities:
+      name: Camera Entities
+      description: "(Camera) List of camera entities to monitor."
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: camera
+    cooldown:
+      name: Cooldown
+      description: Time in minutes to wait before running again.
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 60
+    trigger_state:
+      name: Trigger State
+      description: (Camera) Trigger the automation when your cameras change to this state.
+      default: 'recording'
+      selector:
+        text:
+          multiline: false
+    max_frames:
+      name: Max Frames
+      description: How many frames to analyze. Picks frames with the most movement.
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 60
+    model:
+      name: Model
+      description: Model to use for the video_analyzer service
+      default: "gpt-4o-mini"
+      selector:
+        text:
+          multiline: false
+    message:
+      name: Prompt
+      description: Model prompt for the video_analyzer service
+      default: "Summarize briefly what's happening in the camera feed (one sentence max). Don't describe the scene! If there is a person, describe what they're doing. If nothing is happening, say so."
+      selector:
+        text:
+          multiline: true
+    temperature:
+      name: Temperature
+      description: Randomness. Lower is more accurate, higher is more creative
+      default: 0.1
+      selector:
+        number:
+          min: 0.1
+          max: 1.0
+          step: 0.1
+    max_tokens:
+      name: Maximum Tokens
+      description: Maximum number of tokens to generate
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+    duration:
+      name: Duration
+      description: (Camera) How long to record for (in seconds)
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+    tap_navigate:
+      name: Tap Navigate
+      description: Path to navigate to when tapping notification (e.g. /lovelace/cameras)
+      default: "/lovelace/0"
+      selector:
+        text:
+          multiline: false
+    target_width:
+      name: Target Width
+      description: Width in pixels to downscale (uses less tokens)
+      default: 1280
+      selector:
+        number:
+          min: 512
+          max: 3840
+    detail:
+      name: Detail
+      description: Detail parameter (OpenAI only)
+      default: 'low'
+      selector:
+        select:
+          options:
+            - 'high'
+            - 'low'
 
 variables:
   important: !input important
@@ -147,7 +251,7 @@ variables:
   camera_entities_list: !input camera_entities
   motion_sensors_list: !input motion_sensors
   importance_prompt: "Your job is to decide whether a camera recording is important (so the user gets a notification) or not. Reply with 'yes' if the user should be notified or 'no' otherwise. Reply with these replies exactly."
-
+  
   camera_entity: >
     {% if mode == 'Camera' %}
       {% if motion_sensors_list %}
@@ -206,7 +310,7 @@ variables:
     {% if mode == 'Frigate' %}
       {{ frigate_url }}/api/frigate/notifications/{{ trigger.payload_json['after']['id'] }}/snapshot.jpg?bbox=1&motion=1&regions=1
     {% else %}
-      {{ base_url }}/api/camera_proxy/{{ camera_entity }}/snapshot.jpg  # Используйте этот адрес, если есть необходимость
+      {{ base_url }}/api/camera_proxy/{{ camera_entity }}/snapshot.jpg
     {% endif %}
 
 trigger:
@@ -250,10 +354,10 @@ action:
                       model: !input model
                       message: "{{ importance_prompt }}"
                       include_filename: true
-                      target_width: 1280
-                      detail: low
+                      target_width: !input target_width
+                      detail: !input detail
                       max_tokens: 1
-                      temperature: 0.1
+                      temperature: !input temperature
                     response_variable: importance
               - conditions:
                   - condition: template
@@ -266,12 +370,12 @@ action:
                       model: !input model
                       message: "{{ importance_prompt }}"
                       include_filename: true
-                      target_width: 1280
-                      detail: low
+                      target_width: !input target_width
+                      detail: !input detail
                       max_tokens: 1
-                      temperature: 0.1
+                      temperature: !input temperature
                     response_variable: importance
-    
+
   # Cancel automation if event not deemed important
   - choose:
       - conditions:
@@ -297,9 +401,9 @@ action:
                 {{ notification_message | replace('{{ camera_name }}', camera) | replace('{{ label }}', label) }}
               {% endif %}
             data:
-              video: "{{ video }}"  # Проверьте доступность видео
+              video: "{{ video }}"
               image: "{{ image }}"
-              snapshot: "{{ snapshot }}"  # Убедитесь, что snapshot корректен
+              snapshot: "{{ snapshot }}"
               entity_id: "{{ camera_entity if mode=='Camera' else '' }}"
               url: !input tap_navigate # iOS
               clickAction: !input tap_navigate # Android
