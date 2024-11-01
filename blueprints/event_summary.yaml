@@ -28,7 +28,7 @@ blueprint:
           integration: mobile_app
     frigate_url:
       name: Frigate URL
-      description: (Frigate) Frigate's base url to fetch preview
+      description: (Frigate) Frigate's base URL to fetch snapshot.
       default: "http://localhost:5000"
       selector:
         text:
@@ -154,11 +154,13 @@ blueprint:
 variables:
   important: !input important
   base_url: !input base_url
+  frigate_url: !input frigate_url
   cooldown: !input cooldown
   mode: !input mode
   camera_entities_list: !input camera_entities
   motion_sensors_list: !input motion_sensors
   importance_prompt: "Your job is to decide whether a camera recording is important (so the user gets a notification) or not. Reply with 'yes' if the user should be notified or 'no' otherwise. Reply with these replies exactly."
+
   camera_entity: >
     {% if mode == 'Camera' %}
       {% if motion_sensors_list %}
@@ -170,43 +172,56 @@ variables:
     {% else %}
       {{ trigger.payload_json['after']['camera'] }}
     {% endif %}
+
   tag: >
     {% if mode == 'Frigate' %}
-      {{ trigger.payload_json['after']['camera'] + int(as_timestamp(now()))|string }}
+      {{ trigger.payload_json['after']['camera'] + int(as_timestamp(now())) | string }}
     {% else %}
-      {{ camera_entity + int(as_timestamp(now()))|string }}
+      {{ camera_entity + int(as_timestamp(now())) | string }}
     {% endif %}
+
   group: >
     {% if mode == 'Frigate' %}
       {{ trigger.payload_json['after']['camera'] }}
     {% else %}
       {{ camera_entity }}
     {% endif %}
+
   label: >
     {% if mode == 'Frigate' %}
-      {{ trigger.payload_json['after']['label']|capitalize }} seen
+      {{ trigger.payload_json['after']['label'] | capitalize }} seen
     {% else %}
       Motion detected
     {% endif %}
+
   camera: >
     {% if mode == 'Frigate' %}
-      {{ trigger.payload_json['after']['camera'].replace('_', ' ')|capitalize }}
+      {{ trigger.payload_json['after']['camera'].replace('_', ' ') | capitalize }}
     {% else %}
-      {{ camera_entity.replace("camera.", "").replace("_", " ")|capitalize }}
+      {{ camera_entity.replace("camera.", "").replace("_", " ") | capitalize }}
     {% endif %}
+
   video: >
     {% if mode == 'Frigate' %}
       {{ base_url }}/api/events/{{ trigger.payload_json['after']['id'] }}/clip.mp4
     {% else %}
       ''
     {% endif %}
+
   image: >
     {% if mode == 'Frigate' %}
       ''
     {% else %}
       {{ base_url }}/api/camera_proxy/{{ camera_entity }}
     {% endif %}
-  
+
+  snapshot: >
+    {% if mode == 'Frigate' %}
+      {{ frigate_url }}/api/frigate/notifications/{{ trigger.payload_json['after']['id'] }}/snapshot.jpg?bbox=1&motion=1&regions=1
+    {% else %}
+      ''
+    {% endif %}
+
 trigger:
   - platform: mqtt
     topic: "frigate/events"
@@ -243,7 +258,7 @@ action:
                 sequence:
                   - service: llmvision.image_analyzer
                     data:
-                      image_entity: "{{ ['camera.' + trigger.payload_json['after']['camera']|lower] }}"
+                      image_entity: "{{ ['camera.' + trigger.payload_json['after']['camera'] | lower] }}"
                       provider: !input provider
                       model: !input model
                       message: "{{ importance_prompt }}"
@@ -277,7 +292,7 @@ action:
             value_template: "{{ importance is defined and importance.response_text == 'no' }}"
         sequence:
           - stop: "Event is not important"
-
+  
   - choose:
       - conditions:
           - condition: template
@@ -292,9 +307,10 @@ action:
             data:
               video: "{{ video }}"
               image: "{{ image }}"
+              snapshot: "{{ snapshot }}"  # Подразумевает, что snapshot будет правильно сгенерирован
               entity_id: "{{ camera_entity if mode=='Camera' else '' }}"
-              url: !input tap_navigate #iOS
-              clickAction: !input tap_navigate #Android
+              url: !input tap_navigate # iOS
+              clickAction: !input tap_navigate # Android
               tag: "{{ tag }}"
               group: "{{ group }}"
 
