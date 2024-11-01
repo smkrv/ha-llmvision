@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary (LLM Vision SMKRV)
+  name: AI Event Summary (LLM Vision v1.2.1)
   author: valentinfrlch
   description: >
     AI-powered security event summaries for frigate or camera entities. 
@@ -50,7 +50,7 @@ blueprint:
     base_url:
       name: Base URL
       description: "The base URL for notifications (local or external)."
-      default: "http://localhost:5000" 
+      default: "http://localhost:5000"
       selector:
         text:
           multiline: false
