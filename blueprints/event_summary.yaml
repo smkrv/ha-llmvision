@@ -33,6 +33,13 @@ blueprint:
       selector:
         text:
           multiline: false
+    base_url:
+      name: Base URL
+      description: "The base URL to use for images in notifications."
+      default: "http://localhost:5000" 
+      selector:
+        text:
+          multiline: false
     camera_entities:
       name: Camera Entities
       description: (Camera) List of camera entities to monitor
@@ -146,7 +153,7 @@ blueprint:
 
 variables:
   important: !input important
-  base_url: !input frigate_url
+  base_url: !input base_url
   cooldown: !input cooldown
   mode: !input mode
   camera_entities_list: !input camera_entities
@@ -196,9 +203,10 @@ variables:
     {% if mode == 'Frigate' %}
       ''
     {% else %}
-      {{ '/api/camera_proxy/' + camera_entity }}
+      {{ base_url }}/api/camera_proxy/{{ camera_entity }}
     {% endif %}
-  importance_prompt: >
+  
+importance_prompt: >
     Your job is to decide whether a camera recording is important (so the user gets a notification) or not. 
     Reply with 'yes' if the user should be notified or 'no' otherwise. 
     Reply with these replies exactly.
