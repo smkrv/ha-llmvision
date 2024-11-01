@@ -36,7 +36,7 @@ blueprint:
     base_url:
       name: Base URL
       description: "The base URL to use for images in notifications."
-      default: "http://localhost:5000" 
+      default: "http://localhost:5000" # Set a default value if needed
       selector:
         text:
           multiline: false
@@ -158,6 +158,10 @@ variables:
   mode: !input mode
   camera_entities_list: !input camera_entities
   motion_sensors_list: !input motion_sensors
+  importance_prompt: >
+    Your job is to decide whether a camera recording is important (so the user gets a notification) or not. 
+    Reply with 'yes' if the user should be notified or 'no' otherwise. 
+    Reply with these replies exactly.
   camera_entity: >
     {% if mode == 'Camera' %}
       {% if motion_sensors_list %}
@@ -206,11 +210,6 @@ variables:
       {{ base_url }}/api/camera_proxy/{{ camera_entity }}
     {% endif %}
   
-importance_prompt: >
-    Your job is to decide whether a camera recording is important (so the user gets a notification) or not. 
-    Reply with 'yes' if the user should be notified or 'no' otherwise. 
-    Reply with these replies exactly.
-
 trigger:
   - platform: mqtt
     topic: "frigate/events"
