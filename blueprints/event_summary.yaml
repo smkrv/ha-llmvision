@@ -158,10 +158,7 @@ variables:
   mode: !input mode
   camera_entities_list: !input camera_entities
   motion_sensors_list: !input motion_sensors
-  importance_prompt: >
-    Your job is to decide whether a camera recording is important (so the user gets a notification) or not. 
-    Reply with 'yes' if the user should be notified or 'no' otherwise. 
-    Reply with these replies exactly.
+  importance_prompt: "Your job is to decide whether a camera recording is important (so the user gets a notification) or not. Reply with 'yes' if the user should be notified or 'no' otherwise. Reply with these replies exactly."
   camera_entity: >
     {% if mode == 'Camera' %}
       {% if motion_sensors_list %}
@@ -249,7 +246,7 @@ action:
                       image_entity: "{{ ['camera.' + trigger.payload_json['after']['camera']|lower] }}"
                       provider: !input provider
                       model: !input model
-                      message: "{{importance_prompt}}"
+                      message: "{{ importance_prompt }}"
                       include_filename: true
                       target_width: 1280
                       detail: low
@@ -265,7 +262,7 @@ action:
                       image_entity: "{{[camera_entity]}}"
                       provider: !input provider
                       model: !input model
-                      message: "{{importance_prompt}}"
+                      message: "{{ importance_prompt }}"
                       include_filename: true
                       target_width: 1280
                       detail: low
@@ -291,15 +288,15 @@ action:
             type: notify
             device_id: !input notify_device
             title: "{{ label }}"
-            message: "{{camera}}"
+            message: "{{ camera }}"
             data:
-              video: "{{video}}"
-              image: "{{image}}"
-              entity_id: "{{camera_entity if mode=='Camera' else ''}}"
+              video: "{{ video }}"
+              image: "{{ image }}"
+              entity_id: "{{ camera_entity if mode=='Camera' else '' }}"
               url: !input tap_navigate #iOS
               clickAction: !input tap_navigate #Android
-              tag: "{{tag}}"
-              group: "{{group}}"
+              tag: "{{ tag }}"
+              group: "{{ group }}"
 
   - alias: "Analyze event"
     choose:
@@ -343,15 +340,15 @@ action:
     domain: mobile_app
     type: notify
     device_id: !input notify_device
-    title: "{{label}}"
+    title: "{{ label }}"
     message: "{{ response.response_text }}"
     data:
-      tag: "{{tag}}"
-      group: "{{group}}"
-      image: "{{image}}"
-      video: "{{video}}"
-      entity_id: "{{camera_entity if mode=='Camera' else ''}}"
-      url: !input tap_navigate #iOS
-      clickAction: !input tap_navigate #Android
+      tag: "{{ tag }}"
+      group: "{{ group }}"
+      image: "{{ image }}"
+      video: "{{ video }}"
+      entity_id: "{{ camera_entity if mode=='Camera' else '' }}"
+      url: !input tap_navigate # iOS
+      clickAction: !input tap_navigate # Android
       push:
         interruption-level: passive
