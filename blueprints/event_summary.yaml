@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary (LLM Vision v1.2.1)
+  name: AI Event Summary (LLM Vision v1.2.1 / SMKRV)
   author: valentinfrlch
   description: >
     AI-powered security event summaries for frigate or camera entities. 
@@ -26,6 +26,20 @@ blueprint:
       selector:
         device:
           integration: mobile_app
+    mqtt_topic:
+      name: MQTT Topic
+      description: "MQTT topic for Frigate messages."
+      default: "frigate/events"
+      selector:
+        text:
+          multiline: false
+    notification_message:
+      name: Notification Message
+      description: "Customize the notification message using variables like {{ camera_name }} and {{ label }}."
+      default: "A {{ label }} was detected on the {{ camera_name }} camera."
+      selector:
+        text:
+          multiline: true
     frigate_url:
       name: Frigate URL
       description: (Frigate) Frigate's base URL to fetch snapshot.
@@ -35,126 +49,99 @@ blueprint:
           multiline: false
     base_url:
       name: Base URL
-      description: "The base URL to use for images in notifications."
+      description: "The base URL for notifications (local or external)."
       default: "http://localhost:5000" # Set a default value if needed
       selector:
         text:
           multiline: false
-    camera_entities:
-      name: Camera Entities
-      description: (Camera) List of camera entities to monitor
-      default: []
+    update_sub_label:
+      name: Update Sub Label
+      description: "Update the title and/or message with the matched face name."
+      default: false
       selector:
-        entity:
-          multiple: true
-          filter:
-            domain: camera
-    motion_sensors:
-      name: Motion Sensor
-      description: (Camera) Set if your cameras don't change state. Use the same order used for camera entities.
-      default: []
-      selector:
-        entity:
-          multiple: true
-          filter:
-            domain: binary_sensor
-    trigger_state:
-      name: Trigger State
-      description: (Camera) Trigger the automation when your cameras change to this state.
-      default: 'recording'
+        boolean:
+    subtitle:
+      name: Subtitle
+      description: "Secondary heading for notifications."
+      default: ""
       selector:
         text:
           multiline: false
-    tap_navigate:
-      name: Tap Navigate
-      description: Path to navigate to when tapping notification (e.g. /lovelace/cameras)
-      default: "/lovelace/0"
+    critical_notification:
+      name: Critical Notification
+      description: "Send as a critical notification to mobile device."
+      default: false
+      selector:
+        boolean:
+    alert_once:
+      name: Alert Once
+      description: "Only the first notification for each event will play a sound."
+      default: false
+      selector:
+        boolean:
+    update_image:
+      name: Update Image
+      description: "Update the notification if a new 'better' image is available."
+      default: false
+      selector:
+        boolean:
+    video:
+      name: Video
+      description: "Optional clip to attach to the notification."
+      default: false
+      selector:
+        boolean:
+    group:
+      name: Group
+      description: "Group name to determine notification grouping on the mobile device."
+      default: "{{ camera }}"
       selector:
         text:
           multiline: false
-    cooldown:
-      name: Cooldown
-      description: Time in minutes to wait before running again.
-      default: 10
+    notification_sound:
+      name: Notification Sound (iOS only)
+      description: "Sound file for notifications."
+      default: ""
+      selector:
+        text:
+          multiline: false
+    volume_sound:
+      name: Volume Sound (iOS only)
+      description: "Sound level between 0 and 100."
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+    notification_channel:
+      name: Notification Channel (Android only)
+      description: "Custom channel for notifications."
+      default: ""
+      selector:
+        text:
+          multiline: false
+    required_zones:
+      name: Required Zones
+      description: "Specify one zone at a time, in lowercase and with underscores."
+      default: ""
+      selector:
+        text:
+          multiline: true
+    loitering_notifications:
+      name: Loitering Notifications
+      description: "Send loitering notifications if inactive for specified time."
+      default: 0
       selector:
         number:
           min: 0
           max: 60
-    provider:
-      name: Provider
-      description: Configuration to use for the video_analyzer service. See docs for additional information.
-      selector:
-        config_entry:
-          integration: llmvision
-    max_frames:
-      name: Max Frames
-      description: How many frames to analyze. Picks frames with the most movement.
-      default: 3
-      selector:
-        number:
-          min: 1
-          max: 60
-    duration:
-      name: Duration
-      description: (Camera) How long to record for (in seconds)
-      default: 5
-      selector:
-        number:
-          min: 1
-          max: 60
-    model:
-      name: Model
-      description: Model to use for the video_analyzer service
-      default: "gpt-4o-mini"
-      selector:
-        text:
-          multiline: false
-    message:
-      name: Prompt
-      description: Model prompt for the video_analyzer service
-      default: "Summarize briefly what's happening in the camera feed (one sentence max). Don't describe the scene! If there is a person, describe what they're doing. If nothing is happening, say so."
-      selector:
-        text:
-          multiline: true
-    target_width:
-      name: Target Width
-      description: Width in pixels to downscale (uses less tokens)
-      default: 1280
-      selector:
-        number:
-          min: 512
-          max: 3840
-    detail:
-      name: Detail
-      description: Detail parameter (OpenAI only)
-      default: 'low'
-      selector:
-        select:
-          options:
-            - 'high'
-            - 'low'
-    max_tokens:
-      name: Maximum Tokens
-      description: Maximum number of tokens to generate
-      default: 20
-      selector:
-        number:
-          min: 1
-          max: 100
-    temperature:
-      name: Temperature
-      description: Randomness. Lower is more accurate, higher is more creative
-      default: 0.1
-      selector:
-        number:
-          min: 0.1
-          max: 1.0
-          step: 0.1
 
 variables:
   important: !input important
   base_url: !input base_url
   frigate_url: !input frigate_url
+  mqtt_topic: !input mqtt_topic
+  notification_message: !input notification_message
   cooldown: !input cooldown
   mode: !input mode
   camera_entities_list: !input camera_entities
@@ -219,12 +206,12 @@ variables:
     {% if mode == 'Frigate' %}
       {{ frigate_url }}/api/frigate/notifications/{{ trigger.payload_json['after']['id'] }}/snapshot.jpg?bbox=1&motion=1&regions=1
     {% else %}
-      ''
+      {{ base_url }}/api/camera_proxy/{{ camera_entity }}/snapshot.jpg  # Используйте этот адрес, если есть необходимость
     {% endif %}
 
 trigger:
   - platform: mqtt
-    topic: "frigate/events"
+    topic: "{{ mqtt_topic }}"
     id: frigate_trigger
   - platform: 'state'
     entity_id: !input camera_entities
@@ -303,16 +290,27 @@ action:
             type: notify
             device_id: !input notify_device
             title: "{{ label }}"
-            message: "{{ camera }}"
+            message: >
+              {% if update_sub_label %}
+                {{ notification_message | replace('{{ camera_name }}', camera) | replace('{{ label }}', label) | replace('A Person', 'A ' + label) }}
+              {% else %}
+                {{ notification_message | replace('{{ camera_name }}', camera) | replace('{{ label }}', label) }}
+              {% endif %}
             data:
-              video: "{{ video }}"
+              video: "{{ video }}"  # Проверьте доступность видео
               image: "{{ image }}"
-              snapshot: "{{ snapshot }}"  # Подразумевает, что snapshot будет правильно сгенерирован
+              snapshot: "{{ snapshot }}"  # Убедитесь, что snapshot корректен
               entity_id: "{{ camera_entity if mode=='Camera' else '' }}"
               url: !input tap_navigate # iOS
               clickAction: !input tap_navigate # Android
               tag: "{{ tag }}"
               group: "{{ group }}"
+              subtitle: "{{ subtitle }}"  # Secondary heading for notifications
+              sound: "{{ notification_sound }}"  # iOS only
+              volume: "{{ volume_sound }}"  # iOS only
+              notification_channel: "{{ notification_channel }}"  # Android only
+              required_zones: "{{ required_zones }}"  # Required Zones
+              loitering: "{{ loitering_notifications }}"  # Loitering Notifications
 
   - alias: "Analyze event"
     choose:
